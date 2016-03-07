@@ -19,12 +19,12 @@
  */
 package org.neo4j.ha;
 
+import java.io.File;
+import java.io.IOException;
+
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
 
 import org.neo4j.consistency.checking.full.ConsistencyCheckIncompleteException;
 import org.neo4j.graphdb.Transaction;
@@ -78,7 +78,7 @@ public class HAClusterStartupIT
         }
         finally
         {
-            clusterManager.shutdown();
+            clusterManager.safeShutdown();
         }
 
         assertAllStoreConsistent();
@@ -103,7 +103,7 @@ public class HAClusterStartupIT
         }
         finally
         {
-            clusterManager.shutdown();
+            clusterManager.safeShutdown();
         }
 
         assertAllStoreConsistent();
@@ -129,7 +129,7 @@ public class HAClusterStartupIT
         }
         finally
         {
-            clusterManager.shutdown();
+            clusterManager.safeShutdown();
         }
 
         assertAllStoreConsistent();
@@ -154,7 +154,7 @@ public class HAClusterStartupIT
         }
         finally
         {
-            clusterManager.shutdown();
+            clusterManager.safeShutdown();
         }
 
         assertAllStoreConsistent();
@@ -178,7 +178,7 @@ public class HAClusterStartupIT
         }
         finally
         {
-            clusterManager.shutdown();
+            clusterManager.safeShutdown();
         }
 
         assertAllStoreConsistent();
@@ -203,7 +203,7 @@ public class HAClusterStartupIT
         }
         finally
         {
-            clusterManager.shutdown();
+            clusterManager.safeShutdown();
         }
 
         assertAllStoreConsistent();
@@ -238,7 +238,7 @@ public class HAClusterStartupIT
         }
         finally
         {
-            newClusterManager.shutdown();
+            newClusterManager.safeShutdown();
         }
 
         assertAllStoreConsistent( newMaster, newSlave1, newSlave2 );
