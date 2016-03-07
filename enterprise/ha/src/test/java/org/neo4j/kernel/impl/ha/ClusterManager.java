@@ -70,7 +70,6 @@ import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.graphdb.factory.HighlyAvailableGraphDatabaseFactory;
 import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.collection.Iterables;
-import org.neo4j.helpers.collection.MapUtil;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.configuration.Settings;
 import org.neo4j.kernel.ha.HaSettings;
@@ -302,7 +301,7 @@ public class ClusterManager
      * @return a port number
      * @throws IOException if no open port could be found
      */
-    private static int findFreePort( final int minPort, final int maxPort, final Set<Integer> except )
+    public static int findFreePort( final int minPort, final int maxPort, final Set<Integer> except )
             throws IOException
     {
         int port;
@@ -1301,11 +1300,19 @@ public class ClusterManager
         private void startMember( InstanceId serverId ) throws URISyntaxException, IOException
         {
             Clusters.Member member = spec.getMembers().get( serverId.toIntegerIndex() - 1 );
-            StringBuilder initialHosts = new StringBuilder( spec.getMembers().get( 0 ).getHost() );
-            for ( int i = 1; i < spec.getMembers().size(); i++ )
+
+            StringBuilder initialHosts = new StringBuilder();
+            for ( int i = 0; i < spec.getMembers().size(); i++ )
             {
-                initialHosts.append( "," ).append( spec.getMembers().get( i ).getHost() );
+                if ( i > 0 )
+                {
+                    initialHosts.append( "," );
+                }
+                // the host might be 0.0.0.0:PORT, or :PORT. But localhost should always reach them during tests.
+                URI uri = new URI( "cluster://" + spec.getMembers().get( i ).getHost() );
+                initialHosts.append( "localhost:" ).append( uri.getPort() );
             }
+
             File parent = new File( root, name );
             URI clusterUri = new URI( "cluster://" + member.getHost() );
             if ( member.isFullHaMember() )
@@ -1324,7 +1331,7 @@ public class ClusterManager
                 builder.setConfig( ClusterSettings.initial_hosts, initialHosts.toString() );
                 builder.setConfig( ClusterSettings.server_id, serverId + "" );
                 builder.setConfig( ClusterSettings.cluster_server, "0.0.0.0:" + clusterPort );
-                builder.setConfig( HaSettings.ha_server, member.getHostname() + ":" + haPort );
+                builder.setConfig( HaSettings.ha_server, clusterUri.getHost() + ":" + haPort );
                 builder.setConfig( OnlineBackupSettings.online_backup_enabled, Settings.FALSE );
                 for ( Map.Entry<String,IntFunction<String>> conf : commonConfig.entrySet() )
                 {

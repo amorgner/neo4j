@@ -203,18 +203,6 @@ public class Clusters
         {
             return "localhost";
         }
-
-        public String getHostname()
-        {
-            if ( host.contains( ":" ) )
-            {
-                return host.substring( 0, host.indexOf( ":" ) );
-            }
-            else
-            {
-                return host;
-            }
-        }
         
         public String getHost()
         {

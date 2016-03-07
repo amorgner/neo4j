@@ -19,15 +19,16 @@
  */
 package org.neo4j.ha;
 
+import java.io.File;
+import java.net.URI;
+import java.util.HashSet;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
-
-import java.io.File;
-import java.net.URI;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 import org.neo4j.cluster.ClusterSettings;
 import org.neo4j.cluster.InstanceId;
@@ -51,11 +52,9 @@ import org.neo4j.shell.ShellLobby;
 import org.neo4j.shell.ShellSettings;
 import org.neo4j.test.TargetDirectory;
 
+import static java.lang.System.currentTimeMillis;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-
-import static java.lang.System.currentTimeMillis;
-
 import static org.neo4j.kernel.impl.ha.ClusterManager.allSeesAllAsAvailable;
 import static org.neo4j.kernel.impl.ha.ClusterManager.clusterOfSize;
 import static org.neo4j.kernel.impl.ha.ClusterManager.masterAvailable;
@@ -161,12 +160,22 @@ public class TestPullUpdates
         GraphDatabaseService master = null;
         try
         {
+            HashSet<Integer> takenPorts = new HashSet<>();
             File testRootDir = testDirectory.directory( testName.getMethodName() );
             File masterDir = new File( testRootDir, "master" );
+
+            String haServerRange = "localhost:50000-60000";
+            String clusterServerRange = "localhost:30000-40000";
+            int masterPort = ClusterManager.findFreePort( 20_000, 30_000, takenPorts );
+            takenPorts.add( masterPort );
+            String initialHosts = "localhost:" + masterPort;
+
             master = new TestHighlyAvailableGraphDatabaseFactory().
                     newHighlyAvailableDatabaseBuilder( masterDir.getAbsolutePath() )
                     .setConfig( ClusterSettings.server_id, "1" )
-                    .setConfig( ClusterSettings.initial_hosts, "localhost:5001" )
+                    .setConfig( ClusterSettings.cluster_server, "localhost:" + masterPort )
+                    .setConfig( HaSettings.ha_server, haServerRange )
+                    .setConfig( ClusterSettings.initial_hosts, initialHosts )
                     .newGraphDatabase();
 
             // Copy the store, then shutdown, so update pulling later makes sense
@@ -174,7 +183,9 @@ public class TestPullUpdates
             slave = new TestHighlyAvailableGraphDatabaseFactory().
                     newHighlyAvailableDatabaseBuilder( slaveDir.getAbsolutePath() )
                     .setConfig( ClusterSettings.server_id, "2" )
-                    .setConfig( ClusterSettings.initial_hosts, "localhost:5001" )
+                    .setConfig( ClusterSettings.cluster_server, clusterServerRange )
+                    .setConfig( HaSettings.ha_server, haServerRange )
+                    .setConfig( ClusterSettings.initial_hosts, initialHosts )
                     .newGraphDatabase();
 
             // Required to block until the slave has left for sure
@@ -212,7 +223,9 @@ public class TestPullUpdates
             slave = new TestHighlyAvailableGraphDatabaseFactory().
                     newHighlyAvailableDatabaseBuilder( slaveDir.getAbsolutePath() )
                     .setConfig( ClusterSettings.server_id, "2" )
-                    .setConfig( ClusterSettings.initial_hosts, "localhost:5001" )
+                    .setConfig( ClusterSettings.cluster_server, clusterServerRange )
+                    .setConfig( HaSettings.ha_server, haServerRange )
+                    .setConfig( ClusterSettings.initial_hosts, initialHosts )
                     .setConfig( HaSettings.pull_interval, "0" ) // no pull updates, should pull on startup
                     .newGraphDatabase();
 

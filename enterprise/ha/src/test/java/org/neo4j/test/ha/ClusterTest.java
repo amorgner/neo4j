@@ -19,14 +19,12 @@
  */
 package org.neo4j.test.ha;
 
-import java.net.InetAddress;
+import java.util.logging.Level;
 
 import org.hamcrest.CoreMatchers;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
-
-import java.util.logging.Level;
 
 import org.neo4j.cluster.ClusterSettings;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -43,16 +41,12 @@ import org.neo4j.test.TargetDirectory;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-
 import static org.neo4j.helpers.collection.MapUtil.stringMap;
 import static org.neo4j.kernel.impl.ha.ClusterManager.allSeesAllAsAvailable;
 import static org.neo4j.kernel.impl.ha.ClusterManager.clusterOfSize;
 import static org.neo4j.kernel.impl.ha.ClusterManager.clusterWithAdditionalArbiters;
-import static org.neo4j.kernel.impl.ha.ClusterManager.fromXml;
 import static org.neo4j.kernel.impl.ha.ClusterManager.masterAvailable;
 import static org.neo4j.kernel.impl.ha.ClusterManager.masterSeesSlavesAsAvailable;
-import static org.neo4j.kernel.impl.ha.ClusterManager.provided;
-import static org.neo4j.kernel.impl.ha.ClusterManager.allSeesAllAsAvailable;
 
 public class ClusterTest
 {
@@ -137,9 +131,8 @@ public class ClusterTest
     public void testClusterWithWildcardIP() throws Throwable
     {
         ClusterManager clusterManager = new ClusterManager.Builder( testDirectory.directory(  "testCluster" ) )
-                .withProvider( ClusterManager.clusterOfSize( 3 ) )
+                .withProvider( ClusterManager.clusterOfSize( "0.0.0.0", 3 ) )
                 .withSharedConfig( stringMap(
-                        HaSettings.ha_server.name(), "0.0.0.0:6001-6005",
                         HaSettings.tx_push_factor.name(), "2" ) ).build();
         try
         {
