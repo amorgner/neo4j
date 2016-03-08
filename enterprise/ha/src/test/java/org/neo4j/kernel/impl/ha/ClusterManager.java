@@ -22,6 +22,7 @@ package org.neo4j.kernel.impl.ha;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -33,6 +34,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -163,6 +165,7 @@ public class ClusterManager
         };
     }
 
+    private static final Random random = new Random();
     private final File root;
     private final Map<String,IntFunction<String>> commonConfig;
     private final Map<String,ManagedCluster> clusterMap = new HashMap<>();
@@ -278,7 +281,7 @@ public class ClusterManager
             {
                 for ( int i = 0; i < memberCount; i++ )
                 {
-                    int port = findFreePort( CLUSTER_MIN_PORT, CLUSTER_MAX_PORT, takenPorts );
+                    int port = findFreePort( hostname, CLUSTER_MIN_PORT, CLUSTER_MAX_PORT, takenPorts );
                     takenPorts.add( port );
                     cluster.getMembers().add( new Clusters.Member( hostname + ":" + port, true ) );
                 }
@@ -295,18 +298,27 @@ public class ClusterManager
 
     /**
      * Find an available port number which is also not included in the except list.
+     *
+     * @param address to bind on. Null == any local address
      * @param minPort minimum port number to probe
      * @param maxPort maximum port number to probe
      * @param except port numbers which should be considered unavailable and already taken
      * @return a port number
      * @throws IOException if no open port could be found
      */
-    public static int findFreePort( final int minPort, final int maxPort, final Set<Integer> except )
-            throws IOException
+    public static int findFreePort( final String address, final int minPort, final int maxPort,
+            final Set<Integer> except ) throws IOException
     {
-        int port;
-        for ( port = minPort; port <= maxPort; port++ )
+        InetAddress inetAddress = null;
+        if ( address != null && !"0.0.0.0".equals( address ) )
         {
+            inetAddress = InetAddress.getByName( address );
+        }
+        int count;
+        for ( count = minPort; count <= maxPort; count++ )
+        {
+            // Random port number reduces chance that two tests might conflict
+            int port = random.nextInt( (maxPort - minPort) ) + minPort;
             if ( except.contains( port ) )
             {
                 // This port is already taken but not bound yet, ignore it
@@ -314,9 +326,10 @@ public class ClusterManager
             }
             try
             {
-                ServerSocket socket = new ServerSocket( port );
+                ServerSocket socket = new ServerSocket( port, 0, inetAddress );
                 // Port is available, return it
                 socket.close();
+                except.add( port );
                 return port;
             }
             catch ( IOException ex )
@@ -343,13 +356,13 @@ public class ClusterManager
         {
             for ( int i = 0; i < haMemberCount; i++ )
             {
-                int port = findFreePort( CLUSTER_MIN_PORT, CLUSTER_MAX_PORT, takenPorts );
+                int port = findFreePort( null, CLUSTER_MIN_PORT, CLUSTER_MAX_PORT, takenPorts );
                 takenPorts.add( port );
                 cluster.getMembers().add( new Clusters.Member( port, true ) );
             }
             for ( int i = 0; i < additionalClientCount; i++ )
             {
-                int port = findFreePort( CLUSTER_MIN_PORT, CLUSTER_MAX_PORT, takenPorts );
+                int port = findFreePort( null, CLUSTER_MIN_PORT, CLUSTER_MAX_PORT, takenPorts );
                 takenPorts.add( port );
                 cluster.getMembers().add( new Clusters.Member( port, false ) );
             }
@@ -379,13 +392,13 @@ public class ClusterManager
         {
             for ( int i = 0; i < arbiterCount; i++ )
             {
-                int port = findFreePort( CLUSTER_MIN_PORT, CLUSTER_MAX_PORT, takenPorts );
+                int port = findFreePort( null, CLUSTER_MIN_PORT, CLUSTER_MAX_PORT, takenPorts );
                 takenPorts.add( port );
                 cluster.getMembers().add( new Clusters.Member( port, false ) );
             }
             for ( int i = 0; i < haMemberCount; i++ )
             {
-                int port = findFreePort( CLUSTER_MIN_PORT, CLUSTER_MAX_PORT, takenPorts );
+                int port = findFreePort( null, CLUSTER_MIN_PORT, CLUSTER_MAX_PORT, takenPorts );
                 takenPorts.add( port );
                 cluster.getMembers().add( new Clusters.Member( port, true ) );
             }
@@ -1318,7 +1331,7 @@ public class ClusterManager
             if ( member.isFullHaMember() )
             {
                 int clusterPort = clusterUri.getPort();
-                int haPort = findFreePort( HA_MIN_PORT, HA_MAX_PORT, takenHaPorts );
+                int haPort = findFreePort( clusterUri.getHost(), HA_MIN_PORT, HA_MAX_PORT, takenHaPorts );
                 takenHaPorts.add( haPort );
                 File storeDir = new File( parent, "server" + serverId );
                 if ( storeDirInitializer != null )
@@ -1330,7 +1343,7 @@ public class ClusterManager
                 builder.setConfig( ClusterSettings.cluster_name, name );
                 builder.setConfig( ClusterSettings.initial_hosts, initialHosts.toString() );
                 builder.setConfig( ClusterSettings.server_id, serverId + "" );
-                builder.setConfig( ClusterSettings.cluster_server, "0.0.0.0:" + clusterPort );
+                builder.setConfig( ClusterSettings.cluster_server, clusterUri.getHost() + ":" + clusterPort );
                 builder.setConfig( HaSettings.ha_server, clusterUri.getHost() + ":" + haPort );
                 builder.setConfig( OnlineBackupSettings.online_backup_enabled, Settings.FALSE );
                 for ( Map.Entry<String,IntFunction<String>> conf : commonConfig.entrySet() )

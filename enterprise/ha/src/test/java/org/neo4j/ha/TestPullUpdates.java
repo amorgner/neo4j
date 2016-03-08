@@ -166,7 +166,7 @@ public class TestPullUpdates
 
             String haServerRange = "localhost:50000-60000";
             String clusterServerRange = "localhost:30000-40000";
-            int masterPort = ClusterManager.findFreePort( 20_000, 30_000, takenPorts );
+            int masterPort = ClusterManager.findFreePort( null, 20_000, 30_000, takenPorts );
             takenPorts.add( masterPort );
             String initialHosts = "localhost:" + masterPort;
 
