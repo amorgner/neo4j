@@ -833,7 +833,7 @@ public class ClusterManager
     public static class Builder implements ClusterBuilder<Builder>
     {
         private File root;
-        private Provider provider = clusterOfSize( 3 );
+        private Provider provider = null;
         private final Map<String,IntFunction<String>> commonConfig = new HashMap<>();
         private HighlyAvailableGraphDatabaseFactory factory = new HighlyAvailableGraphDatabaseFactory();
         private StoreDirInitializer initializer;
@@ -940,6 +940,10 @@ public class ClusterManager
 
         public ClusterManager build()
         {
+            // Only create a default cluster if nothing else was specified. This avoids needless port binding
+            if (provider == null) {
+                provider = clusterOfSize( 3 );
+            }
             return new ClusterManager( this );
         }
     }
