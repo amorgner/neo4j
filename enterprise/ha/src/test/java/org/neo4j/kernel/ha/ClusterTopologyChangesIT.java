@@ -24,8 +24,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.apache.commons.lang3.SystemUtils;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -210,9 +208,6 @@ public class ClusterTopologyChangesIT
     @Test
     public void failedInstanceShouldReceiveCorrectCoordinatorIdUponRejoiningCluster() throws Throwable
     {
-        // Starting a duplicate clusterClient on Windows can give port conflicts
-        Assume.assumeFalse( SystemUtils.IS_OS_WINDOWS );
-        
         // Given
         HighlyAvailableGraphDatabase initialMaster = cluster.getMaster();
 
